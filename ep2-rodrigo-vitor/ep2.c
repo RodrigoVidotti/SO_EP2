@@ -19,7 +19,7 @@ int n_ciclistas;
 int tamanho_pista;
 int ciclista_90 = 0;
 int *quebraram;
-int *tempo_ou_posicao;
+double *tempo_ou_posicao;
 int *placar;
 
 typedef struct{
@@ -38,11 +38,7 @@ typedef struct{
 pthread_mutex_t mutex;
 
 void printPista(){
-    if (DEBUG){
-        fprintf(stderr,"--------------------------- QUADRO DE INFORMACES -------------------------\n");
-        fprintf(stderr,"%s",info_extra->ptr);
-    }
-    fprintf(stderr,    "------------------------------- FIM DA PISTA -----------------------------\n");
+    fprintf(stderr,"\n------------------------------- FIM DA PISTA -----------------------------\n");
     for(int i = tamanho_pista-1; i >= 0; i--){
         if (i<10) fprintf(stderr,"%d   |\t",i);
         else if(i<100) fprintf(stderr,"%d  |\t",i);
@@ -54,14 +50,18 @@ void printPista(){
         }
         fprintf(stderr,"\n");
     }
-    fprintf(stderr,"----------------------------- COMECO DA PISTA ----------------------------\n\n");
+    fprintf(stderr,    "----------------------------- COMECO DA PISTA ----------------------------\n");
+    if (DEBUG){
+        pthread_mutex_lock(&mutex);
+        fprintf(stderr,"--------------------------- QUADRO DE INFORMACES -------------------------\n");
+        pthread_mutex_unlock(&mutex);
+        fprintf(stderr,"%s",info_extra->ptr);
+    }
 }
 
 void addToExraInfo(char *str){
     char *temp;
-    printf("Entrada : %s\n",info_extra->ptr);
     if ((strlen(info_extra->ptr) + strlen(str)) >= info_extra->size){
-        printf("Vai alocar %lu memória\n",info_extra->size*2);
         info_extra->size = info_extra->size*2;
         temp = malloc(info_extra->size*2*sizeof(char));
         strcpy(temp,info_extra->ptr);
@@ -71,21 +71,22 @@ void addToExraInfo(char *str){
     }else{
         strcat(info_extra->ptr,str);
     }
-    printf("Saida : %s\n\n",info_extra->ptr);
 }
 
 void * ciclistas(void * ptr){ 
     args_struct *args = ptr;
     int i, ran, volta_atual = 0, vel_met=120, pos_i = args->pos_i, pos_j = args->pos_j, n = args->n;
+    double tempo_de_corrida = 0;
     char new_info[100];
     for (;;){
         usleep(vel_met*1000/VELOCIDADE_SIMULACAO);
+        tempo_de_corrida += vel_met;
         // Verifica se ele é o vencedor
         pthread_mutex_lock(&mutex);
         if (n_ciclistas == 1){
             n_ciclistas--;
             placar[n_ciclistas] = n;
-            tempo_ou_posicao[n] = volta_atual;
+            tempo_ou_posicao[n] = ((tempo_de_corrida/1000));
             sprintf(new_info,"Acabou! O vencedor é o ciclista %d!!\n", n);
             if (!DEBUG) fprintf(stderr,"%s",new_info);
             else addToExraInfo(new_info);
@@ -107,7 +108,7 @@ void * ciclistas(void * ptr){
                     n_ciclistas--;
                     pista[pos_i][pos_j] = -1;
                     placar[n_ciclistas] = n;
-                    tempo_ou_posicao[n] = volta_atual;
+                    tempo_ou_posicao[n] = tempo_de_corrida/1000;
                     pthread_mutex_unlock(&mutex);
                     return ptr;
                 }
@@ -142,7 +143,7 @@ void * ciclistas(void * ptr){
                     pthread_mutex_lock(&mutex);
                     quebraram[n] = 1;
                     // Trocar 
-                    tempo_ou_posicao[n] = volta_atual;
+                    tempo_ou_posicao[n] = tempo_de_corrida/1000;
                     n_ciclistas--;
                     placar[n_ciclistas] = n;
                     pista[pos_i][pos_j] = -1;
@@ -272,18 +273,6 @@ int main(int argc, char *argv[]){
         }
 
 
-        // char new_info[100];
-        // sprintf(new_info,"Acabou! O vencedor é o ciclista 3!!");
-        // // printf("%s",new_info);
-        // addToExraInfo(new_info);
-        // addToExraInfo(new_info);
-        // sprintf(new_info,"entrada 3");
-        // addToExraInfo(new_info);
-        // printf("%s",new_info);
-        // addToExraInfo(new_info);
-
-
-
         // Comeca a corrida!
         pthread_mutex_unlock(&mutex);
 
@@ -292,6 +281,7 @@ int main(int argc, char *argv[]){
         for (;;){
             if (DEBUG) printPista();
             pthread_mutex_lock(&mutex);
+            // time_tracer = ((double)(clock() - start) / CLOCKS_PER_SEC)*pow(n_ciclistas,n_ciclistas);
             if (n_ciclistas == 0) break;
             pthread_mutex_unlock(&mutex);
             if (ciclista_90) usleep(20*1000/VELOCIDADE_SIMULACAO);
@@ -304,18 +294,18 @@ int main(int argc, char *argv[]){
         for (i = 0; i < aux; i++){
             if (!quebraram[i]){
                 if (i+1-cont < 10){
-                    if (placar[i] < 10) fprintf(stderr,"%d°  Lugar:   %d   | Ele(a) completou sua última volta aos %d segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
-                    else if (placar[i] < 100 ) fprintf(stderr,"%d°  Lugar:   %d  | Ele(a) completou sua última volta aos %d segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
-                    else fprintf(stderr,"%d°  Lugar:   %d | Ele(a) completou sua última volta aos %d segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
+                    if (placar[i] < 10) fprintf(stderr,"%d°  Lugar:   %d   | Ele(a) completou sua última volta aos %lf segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
+                    else if (placar[i] < 100 ) fprintf(stderr,"%d°  Lugar:   %d  | Ele(a) completou sua última volta aos %lf segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
+                    else fprintf(stderr,"%d°  Lugar:   %d | Ele(a) completou sua última volta aos %lf segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
                 }
                 else if (i+1-cont < 100){
-                    if (placar[i] < 10) fprintf(stderr,"%d° Lugar:   %d   | Ele(a) completou sua última volta aos %d segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
-                    else if (placar[i] < 100) fprintf(stderr,"%d° Lugar:   %d  | Ele(a) completou sua última volta aos %d segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
-                    else fprintf(stderr,"%d° Lugar:   %d | Ele(a) completou sua última volta aos %d segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
+                    if (placar[i] < 10) fprintf(stderr,"%d° Lugar:   %d   | Ele(a) completou sua última volta aos %lf segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
+                    else if (placar[i] < 100) fprintf(stderr,"%d° Lugar:   %d  | Ele(a) completou sua última volta aos %lf segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
+                    else fprintf(stderr,"%d° Lugar:   %d | Ele(a) completou sua última volta aos %lf segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
                 }else{
-                    if (placar[i] < 10) fprintf(stderr,"%d°Lugar:   %d   | Ele(a) completou sua última volta aos %d segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
-                    else if (placar[i] < 100) fprintf(stderr,"%d°Lugar:   %d  | Ele(a) completou sua última volta aos %d segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
-                    else fprintf(stderr,"%d°Lugar:   %d | Ele(a) completou sua última volta aos %d segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
+                    if (placar[i] < 10) fprintf(stderr,"%d°Lugar:   %d   | Ele(a) completou sua última volta aos %lf segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
+                    else if (placar[i] < 100) fprintf(stderr,"%d°Lugar:   %d  | Ele(a) completou sua última volta aos %lf segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
+                    else fprintf(stderr,"%d°Lugar:   %d | Ele(a) completou sua última volta aos %lf segundos. \n",i+1-cont,placar[i],tempo_ou_posicao[i-cont]);
                 }
                 
             }
@@ -324,7 +314,7 @@ int main(int argc, char *argv[]){
         fprintf(stderr,"\n");
         for (i = 0; i < aux; i++){
             if (quebraram[i])
-                fprintf(stderr,"O ciclista %d quebrou enquanto completava sua volta número %d.\n",i,tempo_ou_posicao[i]);         
+                fprintf(stderr,"O ciclista %d quebrou enquanto completava sua volta número %d.\n",i,(int)tempo_ou_posicao[i]);         
         }
         fprintf(stderr,"---------------------------- FIM DA SIMULACAO ----------------------------\n");
 
