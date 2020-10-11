@@ -1,0 +1,8 @@
+- Alocar memória de forma dinâmica para a string info_extra
+
+- Criar vetor global para indicar o posicionamento final de cada ciclista
+    - O instante de tempo em que completaram sua última tmb deve ser guardado
+
+- Identificar ( mais um vetor ) todos os ciclistas que quebraram
+
+- Consertar SegFault que acontece de vez em quando no final da simulacão
