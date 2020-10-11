@@ -7,7 +7,7 @@
 #include <math.h>
 
 // 1 - Tempo real, 2 - Metade do tempo real, etc.
-#define VELOCIDADE_SIMULACAO 3
+#define VELOCIDADE_SIMULACAO 1
 
 // Flag para debug
 #define DEBUG 1
@@ -18,10 +18,16 @@ int *completaram_volta;
 int n_ciclistas;
 int tamanho_pista;
 int ciclista_90 = 0;
-char info_extra[20000];
 int *quebraram;
 int *tempo_ou_posicao;
 int *placar;
+
+typedef struct{
+    char *ptr;
+    size_t size;
+} inf_ext;
+
+inf_ext *info_extra;
 
 typedef struct{
     int n;
@@ -34,7 +40,7 @@ pthread_mutex_t mutex;
 void printPista(){
     if (DEBUG){
         fprintf(stderr,"--------------------------- QUADRO DE INFORMACES -------------------------\n");
-        fprintf(stderr,"%s",info_extra);
+        fprintf(stderr,"%s",info_extra->ptr);
     }
     fprintf(stderr,    "------------------------------- FIM DA PISTA -----------------------------\n");
     for(int i = tamanho_pista-1; i >= 0; i--){
@@ -51,8 +57,21 @@ void printPista(){
     fprintf(stderr,"----------------------------- COMECO DA PISTA ----------------------------\n\n");
 }
 
-void concatString(char *str1, char *srt2){
-    
+void addToExraInfo(char *str){
+    char *temp;
+    printf("Entrada : %s\n",info_extra->ptr);
+    if ((strlen(info_extra->ptr) + strlen(str)) >= info_extra->size){
+        printf("Vai alocar %lu memória\n",info_extra->size*2);
+        info_extra->size = info_extra->size*2;
+        temp = malloc(info_extra->size*2*sizeof(char));
+        strcpy(temp,info_extra->ptr);
+        strcat(temp,str);
+        free(info_extra->ptr);
+        info_extra->ptr = temp;
+    }else{
+        strcat(info_extra->ptr,str);
+    }
+    printf("Saida : %s\n\n",info_extra->ptr);
 }
 
 void * ciclistas(void * ptr){ 
@@ -69,7 +88,7 @@ void * ciclistas(void * ptr){
             tempo_ou_posicao[n] = volta_atual;
             sprintf(new_info,"Acabou! O vencedor é o ciclista %d!!\n", n);
             if (!DEBUG) fprintf(stderr,"%s",new_info);
-            else strcat(info_extra,new_info);
+            else addToExraInfo(new_info);
             pthread_mutex_unlock(&mutex);
             return ptr;
         }
@@ -107,7 +126,6 @@ void * ciclistas(void * ptr){
                     break;
                 }
             }
-
             if (pos_j >= 1 && pista[pos_i][pos_j-1] == -1){
                 pista[pos_i][pos_j-1] = n;
                 pista[pos_i][pos_j] = -1;
@@ -120,7 +138,7 @@ void * ciclistas(void * ptr){
                 if (ran < 5  && n_ciclistas >= 5){
                     sprintf(new_info,"O ciclista %d quebrou! Ele estava na volta %d.\n", n, volta_atual);
                     if (!DEBUG) fprintf(stderr,"%s",new_info);
-                    else strcat(info_extra,new_info);
+                    else addToExraInfo(new_info);
                     pthread_mutex_lock(&mutex);
                     quebraram[n] = 1;
                     // Trocar 
@@ -202,8 +220,13 @@ int main(int argc, char *argv[]){
         n_ciclistas = atoi(argv[2]);  
         pthread_t tid[n_ciclistas];
         pthread_mutex_init(&mutex, NULL);
-
+        info_extra = malloc(sizeof(inf_ext));
         // Alocacão de memória
+
+        info_extra->ptr = malloc(30*sizeof(char));
+        info_extra->size = 30;
+
+
         pista = malloc(tamanho_pista*sizeof(int*));
         completaram_volta = malloc(n_ciclistas*2*sizeof(int));
         quebraram = malloc(n_ciclistas*sizeof(int));
@@ -247,6 +270,19 @@ int main(int argc, char *argv[]){
                 }
             }
         }
+
+
+        // char new_info[100];
+        // sprintf(new_info,"Acabou! O vencedor é o ciclista 3!!");
+        // // printf("%s",new_info);
+        // addToExraInfo(new_info);
+        // addToExraInfo(new_info);
+        // sprintf(new_info,"entrada 3");
+        // addToExraInfo(new_info);
+        // printf("%s",new_info);
+        // addToExraInfo(new_info);
+
+
 
         // Comeca a corrida!
         pthread_mutex_unlock(&mutex);

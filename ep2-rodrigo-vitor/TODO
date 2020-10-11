@@ -1,4 +1,4 @@
-- Alocar memória de forma dinâmica para a string info_extra
+- Criar vetor global para indicar o posicionamento final de cada ciclista (FEITO)
+    - O instante de tempo em que completaram sua última tmb deve ser guardado (LAST THING)
 
-- Criar vetor global para indicar o posicionamento final de cada ciclista
-    - O instante de tempo em que completaram sua última tmb deve ser guardado
+- Comentar o código
