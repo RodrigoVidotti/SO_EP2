@@ -237,6 +237,8 @@ int main(int argc, char *argv[]){
         // Inicializacão dos valores das variáveis
         for(i = 0; i < n_ciclistas*2; i++){
             completaram_volta[i] = 0;
+        }
+        for(i = 0; i < n_ciclistas; i++){
             quebraram[i] = 0;
             tempo_ou_posicao[i] = 0;
         }
