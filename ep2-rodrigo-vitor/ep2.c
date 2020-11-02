@@ -246,7 +246,8 @@ int main(int argc, char *argv[]){
         completaram_volta = malloc(n_ciclistas*2*sizeof(int));
 
         // Inicializacão dos valores das variáveis
-        for(i = 0; i < n_ciclistas*2; i++){
+        // n_ciclistas * 4 é a quantidade máxima de voltas que o ciclista mais rápido fará em um pior cenário
+        for(i = 0; i < n_ciclistas*4; i++){
             completaram_volta[i] = 0;
         }
         for (i = 0; i < tamanho_pista; i++){
