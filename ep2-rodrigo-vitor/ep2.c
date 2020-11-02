@@ -7,17 +7,19 @@
 #include <math.h>
 
 // 1 - Tempo real, 2 - Metade do tempo real, etc.
-#define VELOCIDADE_SIMULACAO 2
+#define VELOCIDADE_SIMULACAO 5
 
 // Flag para debug
-#define DEBUG 1
+#define DEBUG 0
 
 // Variáveis globais
 int **pista;
 int *completaram_volta;
 int n_ciclistas;
+int n_total_ciclistas;
 int tamanho_pista;
 int ciclista_90 = 0;
+int restantes = 0;
 
 // Informacões para serem impressas durante e ao final da corrida
 typedef struct{
@@ -38,7 +40,7 @@ typedef struct{
 
 pthread_mutex_t mutex;
 
-//Método para imprimir o estado atual da pista (final da corrida ou opcão DEBUG ativada)
+// Método para imprimir o estado atual da pista (final da corrida ou opcão DEBUG ativada)
 void printPista(){
     fprintf(stderr,"\n------------------------------- FIM DA PISTA -----------------------------\n");
     for(int i = tamanho_pista-1; i >= 0; i--){
@@ -54,9 +56,7 @@ void printPista(){
     }
     fprintf(stderr,"----------------------------- COMECO DA PISTA ----------------------------\n");
     if (DEBUG){
-        pthread_mutex_lock(&mutex);
         fprintf(stderr,"--------------------------- QUADRO DE INFORMACES -------------------------\n");
-        pthread_mutex_unlock(&mutex);
         fprintf(stderr,"%s",info_extra->ptr);
     }
 }
@@ -87,7 +87,8 @@ void * ciclistas(void * ptr){
         // Verifica se ele é o vencedor
         pthread_mutex_lock(&mutex);
         if (n_ciclistas == 1){
-            sprintf(new_info,"%d° Lugar: %d | Ele(a) completou sua última volta aos %lf segundos.\n", n_ciclistas, n, (tempo_de_corrida/1000));
+            sprintf(new_info,"° Lugar: %d | Ele(a) completou sua última volta aos %lf segundos.\n",n , (tempo_de_corrida/1000));
+            restantes++;
             n_ciclistas--; 
             addToExraInfo(placar, new_info);
             sprintf(new_info,"Acabou! O vencedor é o ciclista %d!!\n", n);
@@ -109,7 +110,8 @@ void * ciclistas(void * ptr){
                 if (volta_atual % 2 != 0){
                     // Esse é o último da fila e deve ser removido, tambem vamos imprimir as infos de final de volta
                     pista[pos_i][pos_j] = -1;
-                    sprintf(new_info,"%d° Lugar: %d | Ele(a) completou sua última volta aos %lf segundos.\n", n_ciclistas, n, (tempo_de_corrida/1000));
+                    sprintf(new_info,"° Lugar: %d | Ele(a) completou sua última volta aos %lf segundos.\n",n , (tempo_de_corrida/1000));
+                    restantes++;
                     n_ciclistas--; 
                     addToExraInfo(placar, new_info);
                     pthread_mutex_unlock(&mutex);
@@ -138,8 +140,8 @@ void * ciclistas(void * ptr){
             pthread_mutex_unlock(&mutex);
             // Esse não é o último da fila, sua velocidade deve ser ajustada e deve-se verificar se ele quebrará
             if (volta_atual % 6 == 0){
-                ran = rand() % 100;
-                if (ran < 5  && n_ciclistas >= 5){
+                ran = rand() % 1000;
+                if (ran < 50*((double)n_ciclistas/(double)n_total_ciclistas)  && n_ciclistas >= 5){
                     // Tratamento para caso o ciclista tenha quebrado
                     sprintf(new_info,"O ciclista %d quebrou! Ele estava na volta %d.\n", n, volta_atual);
                     pthread_mutex_lock(&mutex);
@@ -190,7 +192,6 @@ void * ciclistas(void * ptr){
 
 // Método para inserir os ciclistas na pista
 void posicionamentoInicial(){
-
     int index;
     int *ordem = malloc(n_ciclistas*sizeof(int));
     int *ordem_ver= malloc(n_ciclistas*sizeof(int));
@@ -220,8 +221,10 @@ void posicionamentoInicial(){
 int main(int argc, char *argv[]){
         // Declaracão de variáveis e alocacões das globais
         int i, j;
+        char c;
         tamanho_pista = atoi(argv[1]);
-        n_ciclistas = atoi(argv[2]);  
+        n_total_ciclistas = atoi(argv[2]);  
+        n_ciclistas = n_total_ciclistas;
         pthread_t tid[n_ciclistas];
         pthread_mutex_init(&mutex, NULL);
         info_extra = malloc(sizeof(inf_ext));
@@ -295,8 +298,22 @@ int main(int argc, char *argv[]){
         }
 
         // A corrida acabou, imprime as informacoes finais
+
         fprintf(stderr,"--------------------------------- PLACAR ---------------------------------\n");
-        if(placar->ptr) fprintf(stderr,"%s",placar->ptr);
+        FILE *file = fmemopen (placar->ptr, placar->size, "rb");
+        i = restantes;
+        c = fgetc(file);
+        fprintf(stderr, "%d", i--);
+        while (c != EOF) 
+        { 
+            fprintf (stderr,"%c", c);  
+            if (c == '\n'){
+                if (i == 0) break;
+                fprintf(stderr, "%d", i);
+                i--;
+            }
+            c = fgetc(file); 
+        } 
         fprintf(stderr,"----------------------------- DESQUALIFICADOS ----------------------------\n");
         if(quebraram->ptr) fprintf(stderr,"%s",quebraram->ptr);
         else fprintf(stderr,"Nenhum ciclista quebrou durante a corrida.");
